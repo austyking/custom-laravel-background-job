@@ -1,66 +1,124 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Custom Laravel Background Jobs (Runner)
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+This project is a Laravel-based application that manages and runs background jobs. It includes functionality to run, list, and cancel jobs.
 
-## About Laravel
+## Requirements
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- PHP 8.2
+- Composer
+- Node with npm
+- Laravel
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Installation
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+1. Clone the repository:
+    ```sh
+    git clone https://github.com/austyking/custom-laravel-background-job.git
+    cd custom-laravel-background-job
+    ```
 
-## Learning Laravel
+2. Install PHP dependencies:
+    ```sh
+    composer install
+    ```
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+3. Install JavaScript dependencies:
+    ```sh
+    npm install
+    ```
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+4. Copy the `.env.example` file to `.env` and configure your environment variables:
+    ```sh
+    cp .env.example .env
+    ```
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+5. Generate an application key:
+    ```sh
+    php artisan key:generate
+    ```
 
-## Laravel Sponsors
+6. Run database migrations:
+    ```sh
+    php artisan migrate
+    ```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Configuration
 
-### Premium Partners
+The configuration for the runner jobs can be found in the `config/runner.php` file. You can set the paths for PHP, log files, and job retry settings.
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+### Environment Variables
 
-## Contributing
+The `.env` file includes several environment variables related to the runner jobs:
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+- `RUNNER_SUCCESS`: Status message for successful jobs.
+- `RUNNER_FAILURE`: Status message for failed jobs.
+- `PHP_PATH`: Path to the PHP executable.
+- `RUNNER_RETRY_ATTEMPTS`: Number of retry attempts for failed jobs.
+- `RUNNER_RETRY_DELAY`: Delay between retry attempts.
+- `RUNNER_LOG_PATH`: Path to the log file for runner jobs.
+- `RUNNER_ERROR_LOG_PATH`: Path to the error log file for background jobs.
 
-## Code of Conduct
+## Usage
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+### Creating a Job
+To create a new job, run the command `php artisan runner:job {className}`. For example:
+```sh
+php artisan runner:job AdditionJob
+```
+Job files are by default stored in the `app/Runners/Jobs` directory. The generated job file will look like this:
+```php
+public function handle(/* \$params */)
+{
+    // Your code here
+}
+```
 
-## Security Vulnerabilities
+### Registering a Job
+Unfortunately, Jobs are not automatically registered, at the moment.
+To register a job, add the Job class and method in the `jobs` array inside `config/runner.php`. For example:
+```php
+'jobs' => [
+    \App\Runners\Jobs\AdditionJob::class => 'handle',
+],
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+### Running a Job
+
+To run a job, you can use the `runJob` method in the `RunnerJobsController`:
+```php
+public function runJob(): void
+{
+    Log::info('Running Job');
+    runBackgroundJob(AdditionJob::class, 'handle', [50]);
+}
+```
+
+### Listing Jobs
+
+To list all jobs, navigate to the `/dashboard` route. This will display a table of all jobs with their details.
+
+### Cancelling a Job
+
+To cancel a job, use the `cancel` method in the `RunnerJobsController`. For example:
+```php
+public function cancel($id)
+{
+    $job = RunnerJob::findOrFail($id);
+    $cancelled = Runner::cancelJob($job->id);
+
+    if (!$cancelled) {
+        return redirect()->back()->with('error', 'Job could not be cancelled.');
+    }
+
+    $job->update(['status' => 'cancelled']);
+    return redirect()->back()->with('success', 'Job cancelled successfully.');
+}
+```
+
+## Logging
+
+By default, logs for the background jobs are stored in the `logs/background_jobs.log` and error logs are stored in `logs/background_jobs_errors.log`. You can configure the log paths in the `config/runner.php` file.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+This project is licensed under the MIT License.

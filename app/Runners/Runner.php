@@ -2,7 +2,12 @@
 
 namespace App\Runners;
 
+use App\Models\RunnerJob;
 use Illuminate\Support\Facades\Log;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+$app = require __DIR__ . '/../../bootstrap/app.php';
+$app->make('Illuminate\Contracts\Console\Kernel')->bootstrap();
 
 class Runner
 {
@@ -17,11 +22,13 @@ class Runner
     /**
      * @throws \Exception
      */
-    public static function run($class, $method, array $params = [])
+    public static function run($job, $class, $method, array $params = [])
     {
         $attempts = config ('runner.retry.attempts');
         $delay = config ('runner.retry.delay');
         $classInstance = new $class();
+
+        self::validate ($class, $method);
 
         self::runnerLog ('Running', $class, $method, $params);
 
@@ -29,12 +36,18 @@ class Runner
             try {
                 $results = self::execute ($classInstance, $class, $method, $params);
                 self::runnerLog ('Completed', $class, $method, $params);
+                $job->update(['status' => 'completed']);
                 return $results;
             } catch (\Exception $e) {
                 sleep ($delay);
                 if ($i === $attempts) {
                     self::runnerErrorLog ($class, $method, $params, config ('runner.result.error'), $e->getMessage ());
                     self::runnerLog ('Failed', $class, $method, $params);
+                    $job->update([
+                        'status' => 'failed',
+                        'error_message' => $e->getMessage(),
+                        'retry_count' => $job->retry_count + 1,
+                    ]);
                     throw $e;
                 }
             }
@@ -70,5 +83,38 @@ class Runner
         $result = $classInstance->$method(...$params);
         self::runnerErrorLog ($class, $method, $params, config ('runner.result.success'), $result);
         return $result;
+    }
+
+    /**
+     * @throws \Exception
+     */
+    protected static function validate($class, $method): void
+    {
+        $registeredJobs = config ('runner.jobs');
+
+        if (!(isset($registeredJobs[$class]) && $method == $registeredJobs[$class])) {
+            throw new \Exception("Unauthorized job class or method.");
+        }
+    }
+
+    public static function cancelJob($jobId): bool
+    {
+        $job = RunnerJob::findOrFail($jobId);
+
+        if ($job->status === 'running' && $job->pid) {
+            $pid = $job->pid;
+
+            if (PHP_OS_FAMILY === 'Windows') {
+                exec("taskkill /F /PID $pid");
+            } else {
+                exec("kill -9 $pid");
+            }
+
+            $job->update(['status' => 'cancelled']);
+            self::runnerLog('Cancelled', $job->class, $job->method, $job->parameters);
+            return true;
+        }
+
+        return false;
     }
 }

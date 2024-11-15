@@ -1,13 +1,26 @@
 <?php
 
 if (!function_exists ('runBackgroundJob')) {
-    function runBackgroundJob($class, $method, array $params): false|string|null
+    function runBackgroundJob(string $class, string $method, array $params = []): false|string|null
     {
         $phpPath = config ('runner.php.path');
-        $scriptPath = base_path ('app/Runners/scripts/BackgroundJobScript.php');
-        $params = escapeshellarg (json_encode ($params));
+        $scriptPath = base_path ('app/Runners/Scripts/BackgroundJobScript.php');
+        $escapedParams = escapeshellarg (json_encode ($params));
 
-        $command = "$phpPath $scriptPath \"$class\" \"$method\" $params > /dev/null 2>&1 &";
+        $command = sprintf(
+            '%s %s %s %s %s',
+            $phpPath,
+            escapeshellarg($scriptPath),
+            escapeshellarg($class),
+            escapeshellarg($method),
+            $escapedParams
+        );
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            pclose (popen ("start /B " . $command, "r"));
+            return null;
+        }
+
         return shell_exec ($command);
     }
 }
