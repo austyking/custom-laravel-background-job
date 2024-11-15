@@ -30,7 +30,11 @@ class Runner
 
         self::validate ($class, $method);
 
-        self::runnerLog ('Running', $class, $method, $params);
+        try {
+            self::runnerLog ('Running', $class, $method, $params);
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage ());
+        }
 
         for ($i = 1; $i <= $attempts; $i++) {
             try {
@@ -39,7 +43,11 @@ class Runner
                 $job->update(['status' => 'completed']);
                 return $results;
             } catch (\Exception $e) {
-                self::runnerErrorLog ($class, $method, $params, config ('runner.result.failure'), $e->getMessage ());
+                try {
+                    self::runnerErrorLog ($class, $method, $params, config ('runner.result.failure'), $e->getMessage ());
+                } catch (\Exception $e) {
+                    throw new \Exception($e->getMessage ());
+                }
                 sleep ($delay);
 
                 $job->update([
@@ -48,7 +56,11 @@ class Runner
                 ]);
 
                 if ($i >= $attempts) {
-                    self::runnerLog ('Failed', $class, $method, $params);
+                    try {
+                        self::runnerLog ('Failed', $class, $method, $params);
+                    } catch (\Exception $e) {
+                        throw new \Exception($e->getMessage ());
+                    }
                     $job->update([
                         'status' => 'failed',
                         'error_message' => $e->getMessage(),
@@ -62,12 +74,24 @@ class Runner
 
     protected static function runnerLog($state, $class, $method, $params = []): void
     {
+        $path = config ('runner.log.path');
+        if (empty($path)){
+            throw new \Exception('Log file Path empty. Ensure you have set absolute path in <strong><code class="text-blue-500">config/runner.php -> log -> path</code></strong>. Also make sure to <strong>remove (or comment out) related <code class="text-blue-500">env</code> variables</strong> if you want to use the value in config');
+        }
         $stringParams = implode (', ', $params);
         file_put_contents (config ('runner.log.path'), "----- Background Job $state: $class->$method($stringParams) ----- : " . now ()->format ('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
     }
 
+    /**
+     * @throws \Exception
+     */
     protected static function runnerErrorLog($class, $method, $params, $status, $result): void
     {
+        $path = config ('runner.log.error');
+        if (empty($path)){
+            throw new \Exception('Error Log file Path empty. Ensure you have set absolute path in <strong><code class="text-blue-500">config/runner.php -> log -> error</code></strong>. Also make sure to <strong>remove (or comment out) related <code class="text-blue-500">env</code> variables</strong> if you want to use the value in config');
+        }
+
         $data = json_encode ([
             'class' => $class,
             'method' => $method,
@@ -88,7 +112,7 @@ class Runner
         try {
             $result = $classInstance->$method(...$params);
             if (!$result){
-                throw new \Exception("$class->$method must have returned <pre><code style='color: #FF2D20'>false</code></pre>");
+                throw new \Exception("$class->$method must have returned <code style='color: #FF2D20'>false</code>");
             }
             self::runnerErrorLog ($class, $method, $params, config ('runner.result.success'), $result);
             return $result;
