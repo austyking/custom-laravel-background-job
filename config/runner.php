@@ -28,6 +28,6 @@ return [
      * /path/to/job => 'method'
      */
     'jobs' => [
-        \App\Runners\Jobs\AdditionJob::class => 'handles',
+        \App\Runners\Jobs\AdditionJob::class => 'handle',
     ],
 ];

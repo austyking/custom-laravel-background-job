@@ -42,6 +42,25 @@ This project is a Laravel-based application that manages and runs background job
     php artisan migrate
     ```
 
+7. Serve the application (to view the dashboard):
+    ```sh
+    php artisan serve
+    ```
+
+8. Start the vite server as well:
+    ```sh
+    npm run dev
+    ```
+
+## Access the Dashboard
+Register an account by clicking "Register" in the top-right corner of the homepage or navigate to `{your-host}/register`. After registration, you can log in and access the dashboard.
+
+For the purpose of this Demo, I have created a route to run jobs. You can navigate to the `{your-host}/run-job` route to run a job. A default Job has been created which will run when this route is called.
+
+NOTE: You will have to refresh the dashboard to see the updated status of the job.
+
+The job **simply logs 1 to 50** in the default laravel.log file with a **sleep(1)** interval, so you may have time to refresh the dashboard and see the status(s). You can see the job in the `app/Runners/Jobs` directory.
+
 ## Configuration
 
 The configuration for the runner jobs can be found in the `config/runner.php` file. You can set the paths for PHP, log files, and job retry settings.
@@ -89,7 +108,7 @@ Runner exposes a helper function `runBackgroundJob` which allows you to run Jobs
 runBackgroundJob(AdditionJob::class, 'handle', [50]);
 ```
 
-For the purpose of this Demo, I have created a route to run jobs. You can navigate to the `/run-job` route to run a job. This will run the controller method `runJob` in the `RunnerJobsController`.
+For the purpose of this Demo, I have created a route to run jobs. You can navigate to the `{your-host}/run-job` route to run a job. This will run the controller method `runJob` in the `RunnerJobsController`.
 
 ```php
 class RunnerJobsController extends Controller
