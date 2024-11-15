@@ -21,6 +21,6 @@ if (!function_exists ('runBackgroundJob')) {
             return null;
         }
 
-        return shell_exec ($command);
+        return shell_exec ($command . " > /dev/null 2>&1 &");
     }
 }
