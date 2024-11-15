@@ -84,40 +84,73 @@ To register a job, add the Job class and method in the `jobs` array inside `conf
 
 ### Running a Job
 
-To run a job, you can use the `runJob` method in the `RunnerJobsController`:
+Runner exposes a helper function `runBackgroundJob` which allows you to run Jobs anywhere in your application. For example:
 ```php
-public function runJob(): void
+runBackgroundJob(AdditionJob::class, 'handle', [50]);
+```
+
+For the purpose of this Demo, I have created a route to run jobs. You can navigate to the `/run-job` route to run a job. This will run the controller method `runJob` in the `RunnerJobsController`.
+
+```php
+class RunnerJobsController extends Controller
 {
-    Log::info('Running Job');
-    runBackgroundJob(AdditionJob::class, 'handle', [50]);
+    public function runJob(): void
+        {
+            Log::info ('Running Job');
+            runBackgroundJob (AdditionJob::class, 'handle', [50]);
+        }
 }
 ```
 
 ### Listing Jobs
 
-To list all jobs, navigate to the `/dashboard` route. This will display a table of all jobs with their details.
+To list all jobs, navigate to the `/dashboard` route. This will display a table of all jobs with their details. This could be found here: `RunnerJobsController@index`.
+```php
+class RunnerJobsController extends Controller
+{
+    public function index()
+    {
+        $jobs = RunnerJob::all();
+        return view('dashboard', compact('jobs'));
+    }
+}
+```
+
 
 ### Cancelling a Job
 
-To cancel a job, use the `cancel` method in the `RunnerJobsController`. For example:
+To cancel a job, use the `cancelJob` provided by `Runner` method in the `RunnerJobsController`. For example:
+
 ```php
-public function cancel($id)
+$job = RunnerJob::findOrFail($id);
+$cancelled = Runner::cancelJob($job->id);
+```
+
+You can see it in action here: `RunnerJobsController@cancel`
+
+```php
+class RunnerJobsController extends Controller
 {
-    $job = RunnerJob::findOrFail($id);
-    $cancelled = Runner::cancelJob($job->id);
-
-    if (!$cancelled) {
-        return redirect()->back()->with('error', 'Job could not be cancelled.');
+    public function cancel($id)
+    {
+        $job = RunnerJob::findOrFail($id);
+        $cancelled = Runner::cancelJob($job->id);
+    
+        if (!$cancelled) {
+            return redirect()->back()->with('error', 'Job could not be cancelled.');
+        }
+    
+        $job->update(['status' => 'cancelled']);
+        return redirect()->back()->with('success', 'Job cancelled successfully.');
     }
-
-    $job->update(['status' => 'cancelled']);
-    return redirect()->back()->with('success', 'Job cancelled successfully.');
 }
 ```
 
 ## Logging
 
-By default, logs for the background jobs are stored in the `logs/background_jobs.log` and error logs are stored in `logs/background_jobs_errors.log`. You can configure the log paths in the `config/runner.php` file.
+By default, logs for the background jobs are stored in the `logs/background_jobs.log` and error logs are stored in `logs/background_jobs_errors.log`.
+
+You can configure the log paths in the `config/runner.php` file.
 
 ## License
 
