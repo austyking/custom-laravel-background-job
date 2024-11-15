@@ -71,11 +71,15 @@ The `.env` file includes several environment variables related to the runner job
 
 - `RUNNER_SUCCESS`: Status message for successful jobs.
 - `RUNNER_FAILURE`: Status message for failed jobs.
-- `PHP_PATH`: Path to the PHP executable.
+- `PHP_PATH`: Path to the PHP executable. May be absolute or aliased
 - `RUNNER_RETRY_ATTEMPTS`: Number of retry attempts for failed jobs.
 - `RUNNER_RETRY_DELAY`: Delay between retry attempts.
-- `RUNNER_LOG_PATH`: Path to the log file for runner jobs.
-- `RUNNER_ERROR_LOG_PATH`: Path to the error log file for background jobs.
+- `RUNNER_LOG_PATH`: **Absolute** path to the log file for runner jobs.
+- `RUNNER_ERROR_LOG_PATH`: **Absolute** path to the error log file for background jobs.
+
+These could also be set in the `config/runner.php` configuration file
+
+##### Note: Log file paths MUST be absolute paths
 
 ## Usage
 

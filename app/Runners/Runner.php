@@ -39,16 +39,22 @@ class Runner
                 $job->update(['status' => 'completed']);
                 return $results;
             } catch (\Exception $e) {
+                self::runnerErrorLog ($class, $method, $params, config ('runner.result.failure'), $e->getMessage ());
                 sleep ($delay);
-                if ($i === $attempts) {
-                    self::runnerErrorLog ($class, $method, $params, config ('runner.result.error'), $e->getMessage ());
+
+                $job->update([
+                    'error_message' => $e->getMessage(),
+                    'retry_count' => $job->retry_count + 1,
+                ]);
+
+                if ($i >= $attempts) {
                     self::runnerLog ('Failed', $class, $method, $params);
                     $job->update([
                         'status' => 'failed',
                         'error_message' => $e->getMessage(),
-                        'retry_count' => $job->retry_count + 1,
                     ]);
-                    throw $e;
+                    self::killJobProcess ($job);
+                    throw new \Exception($e->getMessage ());
                 }
             }
         }
@@ -57,32 +63,38 @@ class Runner
     protected static function runnerLog($state, $class, $method, $params = []): void
     {
         $stringParams = implode (', ', $params);
-        file_put_contents (storage_path ('logs/background_jobs.log'), "----- Background Job $state: $class->$method($stringParams) ----- : " . now ()->format ('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
+        file_put_contents (config ('runner.log.path'), "----- Background Job $state: $class->$method($stringParams) ----- : " . now ()->format ('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
     }
 
     protected static function runnerErrorLog($class, $method, $params, $status, $result): void
     {
-        $data = [
+        $data = json_encode ([
             'class' => $class,
             'method' => $method,
             'parameters' => $params,
             'status' => $status,
             'result' => $result,
             'timestamp' => now ()->format ('Y-m-d H:i:s')
-        ];
+        ]);
 
-        if ($status === config ('runner.result.success')) {
-            Log::info ("Background Job $status", [$data]);
-        } else {
-            Log::error ("Background Job $status", [$data]);
-        }
+        file_put_contents (config ('runner.log.error'), "----- Background Job $status: $data ----- : " . now ()->format ('Y-m-d H:i:s') . PHP_EOL, FILE_APPEND);
     }
 
+    /**
+     * @throws \Exception
+     */
     protected static function execute($classInstance, $class, $method, $params)
     {
-        $result = $classInstance->$method(...$params);
-        self::runnerErrorLog ($class, $method, $params, config ('runner.result.success'), $result);
-        return $result;
+        try {
+            $result = $classInstance->$method(...$params);
+            if (!$result){
+                throw new \Exception("$class->$method must have returned <pre><code style='color: #FF2D20'>false</code></pre>");
+            }
+            self::runnerErrorLog ($class, $method, $params, config ('runner.result.success'), $result);
+            return $result;
+        } catch (\Exception $e) {
+            throw new \Exception($e->getMessage ());
+        }
     }
 
     /**
@@ -102,13 +114,7 @@ class Runner
         $job = RunnerJob::findOrFail($jobId);
 
         if ($job->status === 'running' && $job->pid) {
-            $pid = $job->pid;
-
-            if (PHP_OS_FAMILY === 'Windows') {
-                exec("taskkill /F /PID $pid");
-            } else {
-                exec("kill -9 $pid");
-            }
+            self::killJobProcess ($job);
 
             $job->update(['status' => 'cancelled']);
             self::runnerLog('Cancelled', $job->class, $job->method, $job->parameters);
@@ -116,5 +122,16 @@ class Runner
         }
 
         return false;
+    }
+
+    private static function killJobProcess(RunnerJob $job): void
+    {
+        $pid = $job->pid;
+
+        if (PHP_OS_FAMILY === 'Windows') {
+            exec("taskkill /F /PID $pid");
+        } else {
+            exec("kill -9 $pid");
+        }
     }
 }

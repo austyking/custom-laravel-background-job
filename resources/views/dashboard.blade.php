@@ -27,9 +27,10 @@
                                             <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Status</th>
                                             <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">PID</th>
                                             <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Retry Count</th>
-                                            <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Error Message</th>
+                                            <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Last Error Message</th>
+                                            <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Started At</th>
+                                            <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Ended At</th>
                                             <th scope="col" class="text-sm font-medium text-gray-900 px-6 py-4">Actions</th>
-
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -40,13 +41,15 @@
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->method }}</td>
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ json_encode($job->parameters) }}</td>
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">
-                                                    <span class="@if($job->status === 'running') text-green-500 @elseif($job->status === 'cancelled') text-red-500 @else text-gray-500 @endif">
+                                                    <span class="px-3 py-1 rounded-md @if($job->status === 'running') bg-green-200 text-green-900 border-green-900 @elseif($job->status === 'cancelled') bg-purple-200 text-purple-900 border-purple-900 @elseif($job->status === 'completed') bg-blue-200 text-blue-900 border-blue-900 @else bg-red-200 text-red-900 border-red-900 @endif">
                                                         {{ \Illuminate\Support\Str::ucfirst($job->status) }}
                                                     </span>
                                                 </td>
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->pid }}</td>
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->retry_count }}</td>
-                                                <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->error_message }}</td>
+                                                <td class="text-sm text-gray-900 font-light px-6 py-4">{!! $job->error_message !!}</td>
+                                                <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->created_at->format ('D, d M Y @ H:i:s') }}</td>
+                                                <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">{{ $job->updated_at->format ('D, d M Y @ H:i:s') }}</td>
                                                 <td class="text-sm text-gray-900 font-light px-6 py-4 whitespace-nowrap">
                                                     @if ($job->status === 'running')
                                                         <form action="{{ route('runner.jobs.cancel', $job->id) }}" method="POST">
