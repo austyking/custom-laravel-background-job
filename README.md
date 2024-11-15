@@ -152,6 +152,16 @@ By default, logs for the background jobs are stored in the `logs/background_jobs
 
 You can configure the log paths in the `config/runner.php` file.
 
+## Areas of Improvement
+1. **Job Registration Automation**: Automate the registration of jobs to avoid manual updates in the config/runner.php file.
+2. **Job Scheduling**: Implement a job scheduling system to run jobs at specific times.
+3. **Job Prioritization**: Implement a job prioritization system to run high-priority jobs first.
+
+## Current Limitations to this project
+1. **Job Registration**: Jobs are not automatically registered. You have to manually add them to the `config/runner.php` file.
+2. **Job Scheduling**: Jobs are not scheduled to run at specific times.
+3. **Job Prioritization**: You cannot prioritize Jobs based on their importance.
+
 ## License
 
 This project is licensed under the MIT License.
